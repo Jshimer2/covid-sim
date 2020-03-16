@@ -9,6 +9,7 @@ Created on Sun Mar 15 16:52:30 2020
 import random
 import fastrand
 
+import pandas as pd
 import networkx as nx
 import numpy as np
 import plotly.graph_objects as go
@@ -28,16 +29,28 @@ n_nodes = 200 # How many people in the network?
 mean_inters = 8 # How many connection on average
 std_dev = 4
 
-n_sick = 5 # How many sick to start
+prop_sick = .025 # How many sick to start
 
 interval = 5 # Create a network after this many days
 
+prop_social_distancing = .25 # What proportion social distance voluntarily
+effectiveness_social_distancing = .25 # How much less likely are soc. dist to be infected
 
+prop_self_isolating = .05 # What proportion self isolate before showing symptoms
 
 def generate_network(n_nodes, mean_inters, std_dev, n_sick):
     
     # Create a graph with selected attributes
-    n_ties = list(map(int, np.round(np.random.normal(mean_inters, std_dev, n_nodes))))
+    n_ties = pd.Series(map(int, np.round(np.random.normal(mean_inters, std_dev, n_nodes))))
+    
+    # Who distances themselves?  Make them safer
+    distancers = random.sample(list(n_ties.index), round(prop_social_distancing * n_nodes))
+    n_ties[distancers] = n_ties[distancers] * effectiveness_social_distancing
+ 
+    # If you isolate, you dont get sick and dont get others sick
+    isolaters = random.sample(list(n_ties.index), round(prop_self_isolating * n_nodes))
+    n_ties[isolaters] = 0
+    
     G = expected_degree_graph(n_ties, selfloops=False)
     
     # Decide who is sick
